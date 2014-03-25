@@ -11,7 +11,7 @@ LDFLAGS 	=	$(OPENMP)
 CXXFLAGS	+=	-Wall $(OPENMP) $(OPTFLAGS)
 
 clean:
-	rm -r sphray.new sphray.bvh glesray1 *.o ../js/*.js
+	rm -r sphray.new sphray.bvh glesray1 *.o ../js/*.js make_js_world
 
 web_models: make_js_world caffeine.js sphereflake.js dna.js tbv.js inits.js one.js large-bearing.js sortingpump.js gears.js
 
