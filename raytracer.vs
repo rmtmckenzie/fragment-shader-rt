@@ -1,11 +1,10 @@
 uniform mat4 modelview;
-attribute vec4 pos;
-attribute vec2 vtex;
-varying vec2 ftex;
+attribute highp vec4 pos;
+attribute highp vec2 vtex;
+varying highp vec2 ftex;
 
 void main()
 {
-
     gl_Position = modelview * pos;
     ftex = vtex;
 }

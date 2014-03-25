@@ -1,5 +1,3 @@
-#version 100
-
 precision highp float;
 
 uniform int which;
@@ -36,7 +34,7 @@ struct ray {
 
 struct surface_hit
 {
-    float t;
+    highp float t;
     int which;
     vec3 color;
 };
@@ -244,6 +242,7 @@ void shade(in surface_hit hit, in ray theray, out highp vec4 normal, out highp v
     }
 }
 
+/* 400 seems enough for the sorting pump */
 /* limit to 200 for Windows Chrome < 30 */
 const int max_bvh_iterations = 400;
 const int max_leaf_tests = 8;
@@ -252,24 +251,21 @@ void group_intersect(int root, in ray theray, in range prevr, inout surface_hit 
 {
     int g = root;
 
-    /* 400 seems enough for the sorting pump */
     for(int i = 0; i < max_bvh_iterations; i++) {
         group gg = get_group(g);
 
         range r = range_intersect(prevr, group_bounds_intersect(gg, theray));
 
         if((!range_is_empty(r)) && (r.t0 < hit.t)) {
-            // if(!gg.is_branch) {
-                //  max 8 spheres in leaf, but limit on BVH depth
-                //  takes precedence so could be fat leaves at max
-                //  depth, need to carefully only make web scenes with
-                //  8 or fewer spheres at leaf
-                for(int j = 0; j < max_leaf_tests; j++) {
-                    if(j >= gg.count)
-			break;
-		    sphere_intersect(gg.start + j, theray, r, hit);
-		}
-            // }
+        //  max 8 spheres in leaf, but limit on BVH depth
+        //  takes precedence so could be fat leaves at max
+        //  depth, need to carefully only make web scenes with
+        //  8 or fewer spheres at leaf
+        for(int j = 0; j < max_leaf_tests; j++) {
+        if(j >= gg.count)
+            break;
+        sphere_intersect(gg.start + j, theray, r, hit);
+        }
             g = gg.hit_next;
         } else {
             g = gg.miss_next;
@@ -282,10 +278,10 @@ void group_intersect(int root, in ray theray, in range prevr, inout surface_hit 
     }
 }
 
-highp vec3 eye_ray(float u, float v, float aspect, float fov)
+highp vec3 eye_ray(highp float u, highp float v, highp float aspect, highp float fov)
 {
-    float eye_alpha = fov * (u - 0.5);
-    float eye_beta = fov * (v - 0.5) * aspect;
+    highp float eye_alpha = fov * (u - 0.5);
+    highp float eye_beta = fov * (v - 0.5) * aspect;
 
     /* eye space ray */
     highp vec3 eye;
@@ -293,7 +289,10 @@ highp vec3 eye_ray(float u, float v, float aspect, float fov)
     eye.y = sin(eye_beta);
     eye.z = cos(eye_alpha) * cos(eye_beta);
 
-    return eye;
+    // The above functions *should* return a normalized vector.
+    // On integrated GPU (Intel) on MacOS X, it doesn't.  So normalize
+    // here to avoid artifacts due to low-precision trig functions
+    return normalize(eye);
 }
 
 const bool cast_shadows = true;
@@ -322,19 +321,20 @@ bool do_one_whitted(in ray worldray, out vec3 result, out ray reflected)
 
         vec3 color;
         highp vec4 object_normal, object_point;
-        highp vec4 world_normal, world_point;
         shade(shading, objectray, object_normal, object_point, color);
+
+        highp vec4 world_normal, world_point;
         world_normal = object_normal_inverse * object_normal;
         world_point = object_inverse * object_point;
 
-	ray world_shadowray;
-	ray object_shadowray;
+    ray world_shadowray;
+    ray object_shadowray;
 
-	world_shadowray.o = world_point + world_normal * 0.0001;
-	world_shadowray.d = vec4(light_dir.x, light_dir.y, light_dir.z, 0);
-	surface_hit shadow_hit = surface_hit_init(vec3(0.0, 0.0, 0.0));
+    world_shadowray.o = world_point + world_normal * 0.0001;
+    world_shadowray.d = vec4(light_dir.x, light_dir.y, light_dir.z, 0);
+    surface_hit shadow_hit = surface_hit_init(vec3(0.0, 0.0, 0.0));
         transform(world_shadowray, object_matrix, object_normal_matrix, object_shadowray);
-	group_intersect(tree_root, object_shadowray, range(0.0, 100000000.0), shadow_hit);
+    group_intersect(tree_root, object_shadowray, range(0.0, 100000000.0), shadow_hit);
 
         if(shadow_hit.t < infinitely_far) {
             result = color * 0.1;
@@ -353,8 +353,6 @@ const int bounce_count = 2;
 
 void main()
 {
-    gl_FragColor = vec4(0, 0, 0, 1);
-
     ray eyeray, worldray, objectray;
 
     eyeray.d.xyz = eye_ray(ftex.x, 1.0 - ftex.y, aspect, fov);
@@ -363,15 +361,18 @@ void main()
 
     transform(eyeray, camera_matrix, camera_normal_matrix, worldray);
 
+    vec3 result = vec3(0, 0, 0);
     float intensity = 1.0;
     for(int i = 0; i < bounce_count; i++) {
         ray reflected;
         vec3 color;
         bool hit_something = do_one_whitted(worldray, color, reflected);
-        gl_FragColor.xyz += color * intensity;
+        result += color * intensity;
         if(!hit_something)
             break;
         intensity *= .5;
         worldray = reflected;
     }
+
+    gl_FragColor = vec4(result.r, result.g, result.b, 1);
 }

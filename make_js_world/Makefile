@@ -1,4 +1,4 @@
-default : make_js_world caffeine.js dna.js gears.js inits.js large-bearing.js sortingpump.js tbv.js sphereflake.js
+default : make_js_world one.js caffeine.js dna.js gears.js inits.js large-bearing.js sortingpump.js tbv.js sphereflake.js
 
 # OPENMP          ?=      -fopenmp
 
@@ -35,6 +35,9 @@ glesray1: glesray1.o world.o
 
 make_js_world: make_js_world.o world.o
 	$(CXX) -o $@ $^ $(OPTFLAGS) $(LDFLAGS)
+
+one.js: one.ray make_js_world
+	./make_js_world $^ > ../js/$@
 
 caffeine.js: caffeine.ray make_js_world
 	./make_js_world $^ > ../js/$@

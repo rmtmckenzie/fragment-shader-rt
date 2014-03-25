@@ -1,0 +1,64 @@
+<html>
+<head>  
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css">
+    <script src="//code.jquery.com/jquery-1.9.1.js"></script>
+    <script src="//code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+    <script id="mathjs" type="text/javascript" src="math.js"></script>
+    <script id="helper" type="text/javascript" src="helper.js"></script>
+
+</head>
+<body>
+    <center>
+    <table>
+    <tr>
+    <td>
+    <canvas id="rendering" width="512" height="512" style="width: 512px; height: 512px;border:1px solid #d3d3d3;">
+    Your browser does not support the HTML5 canvas tag.</canvas>
+    </td>
+    <td id="rendering_info" width="0%"></td>
+    </tr>
+    <tr>
+    <td>
+    <center>
+    <i>
+    This is an interactive ray-tracer.<br>
+    Click and drag with left button.<br>
+    Mouse/Trackpad scrollwheel zooms.<br>
+    </i>
+    <div id="interaction_panel">
+
+    <select id="interaction_list" onchange="change_interaction()">
+    <option value="rotate_object" selected>Rotate Object</option>
+    <option value="zoom_object">Zoom Object</option>
+    <option value="rotate_light">Rotate Light</option>
+    </select>
+
+    <select id="resolution_list" onchange="change_resolution()">
+    <option value="half">Half Resolution</option>
+    <option value="full" selected>Full Resolution</option>
+    <option value="double">Double Resolution</option>
+    </select>
+
+    <select id="models_list" onchange="change_model()"></select>
+
+    <div id="fps"></div>
+    </center>
+    </div>
+    </td>
+    </tr>
+    </table>
+    <div id="debug"></div>
+    <div id="info"></div>
+    </center>
+
+    <script>
+        $.when($.get("raytracer.es.fs"),$.get("raytracer.vs")).done(function(a1,a2){
+            $(function(){
+                gRayTracingFragmentShaderText = a1[0];
+                gDecalVertexShaderText = a2[0];
+                init();
+            });
+        });
+    </script>
+</body>
+</html>
