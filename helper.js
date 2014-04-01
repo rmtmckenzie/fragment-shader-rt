@@ -35,6 +35,13 @@ light_rotation = [0, 0, 0, 1]
 object_rotation = [0, 0, 0, 1]
 object_position = vec3(0, 0, 0)
 
+camera_pos_x = 0;
+camera_pos_y = 0;
+
+yaw = 0;
+pitch = 0;
+roll = 0;
+
 function create_camera_matrix(viewpoint, yaw, pitch, roll, scene_data)
 {
     var matrix = mat4_make_identity()
@@ -101,11 +108,11 @@ function update_light()
 
 function update_view_params(scene_data, zoom)
 {
-    var offset = vec3(0, 0, zoom * scene_data.scene_extent / 2 / Math.sin(scene_data.fov / 2))
+    var offset = vec3(camera_pos_x, camera_pos_y, zoom * scene_data.scene_extent / 2 / Math.sin(scene_data.fov / 2))
 
     scene_data.eye = vec3_subtract(scene_data.scene_center, offset)
 
-    create_camera_matrix(offset, 0, 0, 0, scene_data)
+    create_camera_matrix(offset, yaw, pitch, roll, scene_data)
 
     create_object_matrix(scene_data.scene_center, object_rotation, object_position, scene_data)
 }
@@ -434,6 +441,8 @@ function mouseout(gl, raytracer, scene_data, ev)
 ROTATE_OBJECT=1
 ROTATE_LIGHT=2
 ZOOM_OBJECT=3
+ROTATE_SCENE=4
+TRANSLATE_SCENE=5
 motion_target = ROTATE_OBJECT
 
 // XXX for debugging 11/8/2013
@@ -474,12 +483,19 @@ function mousewheel(gl, raytracer, scene_data, ev)
 
 function mousemove(gl, raytracer, scene_data, ev)
 {
+  
     dx = ev.layerX - ox
     dy = ev.layerY - oy
 
     if(buttondown && ((dx != 0) || (dy != 0))) {
         var canvas = document.getElementById("rendering")
-        if(motion_target == ZOOM_OBJECT) {
+        if(motion_target == TRANSLATE_SCENE){
+            camera_pos_x += dx/20;
+            camera_pos_y -= dy/20;
+        } else if(motion_target == ROTATE_SCENE){
+            yaw += dx/100;
+            pitch += dy/100
+        } else if(motion_target == ZOOM_OBJECT) {
             zoom *= Math.exp(Math.log(5.0) / canvas.offsetHeight / 2 * -dy)
         } else if(motion_target == ROTATE_OBJECT) {
             object_rotation = trackball_motion(object_rotation, (dx / canvas.offsetWidth), (dy / canvas.offsetHeight))
@@ -754,6 +770,10 @@ function change_interaction()
         motion_target = ZOOM_OBJECT
     else if(value == "rotate_light")
         motion_target = ROTATE_LIGHT
+    else if(value == "rotate_scene")
+        motion_target = ROTATE_SCENE
+    else if(value == "translate_scene")
+        motion_target = TRANSLATE_SCENE
 }
 
 function change_resolution()
