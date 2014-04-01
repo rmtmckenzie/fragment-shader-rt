@@ -251,21 +251,29 @@ void group_intersect(int root, in ray theray, in range prevr, inout surface_hit 
 {
     int g = root;
 
+    //until leaf
+    //  does the ray go through the group?
+    //  if so
+    //      check each sphere, if hit, save 
+    //      go to next (down the tree)
+    //  if not, next 
+    //      across the tree
+
     for(int i = 0; i < max_bvh_iterations; i++) {
         group gg = get_group(g);
 
         range r = range_intersect(prevr, group_bounds_intersect(gg, theray));
 
         if((!range_is_empty(r)) && (r.t0 < hit.t)) {
-        //  max 8 spheres in leaf, but limit on BVH depth
-        //  takes precedence so could be fat leaves at max
-        //  depth, need to carefully only make web scenes with
-        //  8 or fewer spheres at leaf
-        for(int j = 0; j < max_leaf_tests; j++) {
-        if(j >= gg.count)
-            break;
-        sphere_intersect(gg.start + j, theray, r, hit);
-        }
+            //  max 8 spheres in leaf, but limit on BVH depth
+            //  takes precedence so could be fat leaves at max
+            //  depth, need to carefully only make web scenes with
+            //  8 or fewer spheres at leaf
+            for(int j = 0; j < max_leaf_tests; j++) {
+                if(j >= gg.count)
+                    break;
+                sphere_intersect(gg.start + j, theray, r, hit);
+            }
             g = gg.hit_next;
         } else {
             g = gg.miss_next;
@@ -305,36 +313,48 @@ void transform(in ray r, in mat4 matrix, in mat4 normal_matrix, out ray t)
 
 bool do_one_whitted(in ray worldray, out vec3 result, out ray reflected)
 {
+    //surface_hit: inifinitely far, no obj, background_color
     surface_hit shading = surface_hit_init(background_color);
 
     ray objectray;
+
+    //transform into object coordinates
     transform(worldray, object_matrix, object_normal_matrix, objectray);
 
+    //find intersecting node
     group_intersect(tree_root, objectray, range(0.0, 100000000.0), shading);
 
     if(shading.t >= infinitely_far) {
-
         result = background_color;
         return false;
-
     } else {
-
         vec3 color;
         highp vec4 object_normal, object_point;
+        
+        //calculate the point on the surface
+        //  incl. normal, spacial, and colour
         shade(shading, objectray, object_normal, object_point, color);
 
         highp vec4 world_normal, world_point;
         world_normal = object_normal_inverse * object_normal;
         world_point = object_inverse * object_point;
 
-    ray world_shadowray;
-    ray object_shadowray;
-
-    world_shadowray.o = world_point + world_normal * 0.0001;
-    world_shadowray.d = vec4(light_dir.x, light_dir.y, light_dir.z, 0);
-    surface_hit shadow_hit = surface_hit_init(vec3(0.0, 0.0, 0.0));
+        ray world_shadowray;
+        ray object_shadowray;
+        
+        //calculate a shadow from the light
+        //  similar to above;
+        //  starting at surface point and travelling towards light
+        //  does it intersect?
+        //  if so:
+        //    decrease colour of the found point (darker)
+        //  else:
+        //    calculate diffuse and put it in
+        world_shadowray.o = world_point + world_normal * 0.0001;
+        world_shadowray.d = vec4(light_dir.x, light_dir.y, light_dir.z, 0);
+        surface_hit shadow_hit = surface_hit_init(vec3(0.0, 0.0, 0.0));
         transform(world_shadowray, object_matrix, object_normal_matrix, object_shadowray);
-    group_intersect(tree_root, object_shadowray, range(0.0, 100000000.0), shadow_hit);
+        group_intersect(tree_root, object_shadowray, range(0.0, 100000000.0), shadow_hit);
 
         if(shadow_hit.t < infinitely_far) {
             result = color * 0.1;
@@ -349,16 +369,19 @@ bool do_one_whitted(in ray worldray, out vec3 result, out ray reflected)
     }
 }
 
-const int bounce_count = 2;
+const int bounce_count = 3;
 
 void main()
 {
     ray eyeray, worldray, objectray;
 
+    //ray in eye space
     eyeray.d.xyz = eye_ray(ftex.x, 1.0 - ftex.y, aspect, fov);
     eyeray.d.w = 0.0;
     eyeray.o = vec4(0.0, 0.0, 0.0, 1.0);
 
+    //worldray.o = camera_matrix * eyeray.o;
+    //worldray.d = normal_matrix * eyeray.d;
     transform(eyeray, camera_matrix, camera_normal_matrix, worldray);
 
     vec3 result = vec3(0, 0, 0);
@@ -366,6 +389,7 @@ void main()
     for(int i = 0; i < bounce_count; i++) {
         ray reflected;
         vec3 color;
+        
         bool hit_something = do_one_whitted(worldray, color, reflected);
         result += color * intensity;
         if(!hit_something)
