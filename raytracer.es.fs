@@ -154,7 +154,7 @@ float sphere_intersect(in highp vec3 center, in float radius, in ray theray, in 
 
 struct group {
     bool is_branch;
-    int g1, g2;
+    //int g1, g2;
     int start, count;
     highp vec3 boxmin;
     highp vec3 boxmax;
@@ -172,9 +172,9 @@ group get_group(int which)
     g.boxmin = texture2D(group_boxmin, sample).xyz;
     g.boxmax = texture2D(group_boxmax, sample).xyz;
 
-    highp vec2 group_child = texture2D(group_children, sample).xy;
-    g.g1 = int(group_child.x);
-    g.g2 = int(group_child.y);
+    //highp vec2 group_child = texture2D(group_children, sample).xy;
+    //g.g1 = int(group_child.x);
+    //g.g2 = int(group_child.y);
 
     highp vec2 group_next = texture2D(group_hitmiss, sample).xy;
     g.hit_next = int(group_next.x);
@@ -313,7 +313,7 @@ void transform(in ray r, in mat4 matrix, in mat4 normal_matrix, out ray t)
 
 bool do_one_whitted(in ray worldray, out vec3 result, out ray reflected)
 {
-    //surface_hit: inifinitely far, no obj, background_color
+    //surface_hit: set to inifinitely far, no obj, background_color
     surface_hit shading = surface_hit_init(background_color);
 
     ray objectray;
